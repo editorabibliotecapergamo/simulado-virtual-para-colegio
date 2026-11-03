@@ -14,8 +14,10 @@ window.CONFIG_SIMULADO = {
   quantidadeMedias: 20,
 
   // true  = cada aluno recebe uma prova diferente (sorteio individual, dificulta a "cola").
-  // false = todos os alunos da mesma série recebem as mesmas questões (definidas pelo codigoProva).
-  provaIndividual: true,
+  // false = todos os alunos da mesma série recebem a MESMA prova (definida pelo codigoProva).
+  // ATENÇÃO: se você mudar o codigoProva, a prova muda. Gere de novo os PDFs do gabarito
+  // (página gabarito.html) antes de aplicar.
+  provaIndividual: false,
   codigoProva: "4BIM-2026",
 
   // Embaralha a ordem das alternativas (A–E) de cada questão.
@@ -23,7 +25,8 @@ window.CONFIG_SIMULADO = {
   embaralharAlternativas: true,
 
   // Mostrar ao aluno o gabarito comentado depois que ele finaliza.
-  mostrarGabarito: true,
+  // false = o aluno vê só a nota; o gabarito é entregue pelo professor (PDF da página gabarito.html).
+  mostrarGabarito: false,
 
   // Endereço do Google Apps Script que grava os resultados na planilha.
   // Deixe vazio ("") enquanto não estiver configurado. Veja o README.

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Gabarito do professor</title>
+  <link rel="stylesheet" href="simulado.css">
+  <style>
+    .barra-prof { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-bottom: 16px; }
+    .barra-prof .campo { max-width: 260px; margin: 0; }
+    .barra-prof .btn { flex: 0 0 auto; }
+    .resumo-gab { width: 100%; border-collapse: collapse; margin: 12px 0 20px; font-size: 14px; }
+    .resumo-gab td { border: 1px solid var(--borda); padding: 6px 4px; text-align: center; }
+    .resumo-gab .n { background: #f1f5f9; color: var(--suave); font-weight: 600; }
+    .resumo-gab .l { font-weight: 800; color: var(--primaria); }
+    .cabecalho-impressao { display: none; }
+    @media print {
+      .barra-prof, .topo, main > .ajuda { display: none !important; }
+      .cabecalho-impressao { display: block; margin-bottom: 10px; }
+      .cartao.item-gabarito { break-inside: auto; padding: 10px 14px; margin-bottom: 8px; }
+      .item-gabarito .enunciado { font-size: 13px; margin-bottom: 8px; }
+      .item-gabarito .alternativas { gap: 4px; }
+      .item-gabarito .alternativa { font-size: 12px; padding: 4px 8px; break-inside: avoid; }
+      .item-gabarito .alternativa .letra { width: 22px; height: 22px; font-size: 11px; }
+      .item-gabarito .justificativa { font-size: 11px; margin-top: 6px; padding: 6px 8px; break-inside: avoid; }
+      .questao-cabecalho { break-after: avoid; margin-bottom: 6px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topo">
+    <div class="topo-conteudo">
+      <div class="marca">
+        <div class="logo" aria-hidden="true">NJ</div>
+        <div>
+          <div class="escola" id="nomeEscola">Colégio</div>
+          <div class="subtitulo">Gabarito do professor</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="barra-prof">
+      <label class="campo">
+        <span>Série</span>
+        <select id="serie"></select>
+      </label>
+      <button type="button" class="btn btn-primario" id="btnPdf">Baixar PDF do gabarito</button>
+    </div>
+    <p class="ajuda">No diálogo de impressão, escolha <strong>Salvar como PDF</strong>. Este gabarito corresponde à prova que os alunos recebem no link do simulado (mesmo código de prova e mesma ordem das alternativas).</p>
+
+    <div class="cabecalho-impressao" id="cabecalhoImpressao"></div>
+    <div id="conteudo"><p class="carregando">Carregando…</p></div>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="prova.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      var CFG = window.CONFIG_SIMULADO || {};
+      var LETRAS = ProvaSimulado.LETRAS;
+      var banco = [], porUid = {};
+      function $(id) { return document.getElementById(id); }
+      function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+
+      function desenhar() {
+        var serie = $("serie").value;
+        var titulo = (CFG.titulo || "Simulado") + " — " + serie + " — Gabarito comentado";
+        document.title = titulo;
+        $("cabecalhoImpressao").innerHTML = "";
+        $("cabecalhoImpressao").appendChild(el("h1", null, (CFG.escola || "") + " · " + titulo));
+        $("cabecalhoImpressao").appendChild(el("p", "ajuda", "Código da prova: " + (CFG.codigoProva || "")));
+
+        var prova = ProvaSimulado.montarProva(banco, Object.assign({}, CFG, { provaIndividual: false }), serie, "");
+        var box = $("conteudo");
+        box.innerHTML = "";
+
+        // Resumo do gabarito (uma tabela com 4 blocos de 10 questões).
+        var tab = el("table", "resumo-gab");
+        for (var bloco = 0; bloco < prova.length; bloco += 10) {
+          var linhaN = el("tr"), linhaL = el("tr");
+          for (var i = bloco; i < Math.min(bloco + 10, prova.length); i++) {
+            linhaN.appendChild(el("td", "n", String(i + 1).padStart(2, "0")));
+            linhaL.appendChild(el("td", "l", ProvaSimulado.letraCorreta(prova[i], porUid[prova[i].uid])));
+          }
+          tab.appendChild(linhaN); tab.appendChild(linhaL);
+        }
+        box.appendChild(tab);
+
+        prova.forEach(function (item, i) {
+          var q = porUid[item.uid];
+          var certa = ProvaSimulado.letraCorreta(item, q);
+          var c = el("article", "cartao item-gabarito correta");
+          var cab = el("div", "questao-cabecalho");
+          cab.appendChild(el("span", "questao-numero", "Questão " + (i + 1)));
+          cab.appendChild(el("span", "questao-tag", q.dificuldade + " · " + q.modulo.split(":")[0] + " · " + q.tema));
+          c.appendChild(cab);
+          c.appendChild(el("p", "enunciado", q.enunciado));
+          var lista = el("div", "alternativas");
+          item.ordem.forEach(function (original, pos) {
+            var letra = LETRAS[pos];
+            var b = el("div", "alternativa" + (letra === certa ? " e-correta" : ""));
+            b.appendChild(el("span", "letra", letra));
+            b.appendChild(el("span", null, q.alternativas[original]));
+            lista.appendChild(b);
+          });
+          c.appendChild(lista);
+          c.appendChild(el("p", "justificativa", "Gabarito: " + certa + ". " + q.justificativa));
+          box.appendChild(c);
+        });
+      }
+
+      $("nomeEscola").textContent = CFG.escola || "Colégio";
+      (CFG.series || []).forEach(function (s) { var o = el("option", null, s); o.value = s; $("serie").appendChild(o); });
+      var pedida = new URLSearchParams(location.search).get("serie");
+      if (pedida && (CFG.series || []).indexOf(pedida) >= 0) $("serie").value = pedida;
+      $("serie").addEventListener("change", desenhar);
+      $("btnPdf").addEventListener("click", function () { window.print(); });
+
+      fetch("questoes.json").then(function (r) { return r.json(); }).then(function (d) {
+        banco = d; d.forEach(function (q) { porUid[q.uid] = q; });
+        desenhar();
+      }).catch(function () { $("conteudo").textContent = "Não foi possível carregar as questões."; });
+    })();
+  </script>
+</body>
+</html>

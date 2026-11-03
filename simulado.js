@@ -7,7 +7,7 @@
   "use strict";
 
   var CFG = window.CONFIG_SIMULADO || {};
-  var LETRAS = ["A", "B", "C", "D", "E"];
+  var LETRAS = ProvaSimulado.LETRAS;
   var CHAVE = "simulado-online-v1";
 
   var banco = [];
@@ -17,32 +17,6 @@
   var $ = function (id) { return document.getElementById(id); };
 
   // ---------- utilidades ----------
-  function hashTexto(str) {
-    var h = 1779033703 ^ str.length;
-    for (var i = 0; i < str.length; i++) {
-      h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
-      h = (h << 13) | (h >>> 19);
-    }
-    return h >>> 0;
-  }
-  function geradorAleatorio(semente) {
-    var a = semente >>> 0;
-    return function () {
-      a = (a + 0x6D2B79F5) >>> 0;
-      var t = a;
-      t = Math.imul(t ^ (t >>> 15), t | 1);
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-  function embaralhar(lista, rnd) {
-    var a = lista.slice();
-    for (var i = a.length - 1; i > 0; i--) {
-      var j = Math.floor(rnd() * (i + 1));
-      var t = a[i]; a[i] = a[j]; a[j] = t;
-    }
-    return a;
-  }
   function el(tag, classe, texto) {
     var e = document.createElement(tag);
     if (classe) e.className = classe;
@@ -73,37 +47,11 @@
   }
 
   // ---------- montagem da prova ----------
-  function selecionar(lista, quantidade, rnd) {
-    // Distribui as questões igualmente entre os módulos (round-robin).
-    var grupos = {};
-    lista.forEach(function (q) { (grupos[q.modulo] = grupos[q.modulo] || []).push(q); });
-    var filas = embaralhar(Object.keys(grupos), rnd).map(function (m) { return embaralhar(grupos[m], rnd); });
-    var escolhidas = [];
-    while (escolhidas.length < quantidade && filas.some(function (f) { return f.length; })) {
-      for (var i = 0; i < filas.length && escolhidas.length < quantidade; i++) {
-        if (filas[i].length) escolhidas.push(filas[i].shift());
-      }
-    }
-    return escolhidas;
-  }
-
   function montarProva(aluno) {
-    var semente = CFG.provaIndividual === false
-      ? hashTexto((CFG.codigoProva || "") + "|" + aluno.serie)
-      : hashTexto(aluno.nome + "|" + aluno.numero + "|" + Date.now() + "|" + Math.random());
-    var rnd = geradorAleatorio(semente);
-    var daSerie = banco.filter(function (q) { return q.serie === aluno.serie; });
-    var faceis = selecionar(daSerie.filter(function (q) { return q.dificuldade === "Fácil"; }), CFG.quantidadeFaceis || 20, rnd);
-    var medias = selecionar(daSerie.filter(function (q) { return q.dificuldade === "Médio"; }), CFG.quantidadeMedias || 20, rnd);
-    var prova = embaralhar(faceis.concat(medias), rnd);
-    return prova.map(function (q) {
-      return { uid: q.uid, ordem: CFG.embaralharAlternativas === false ? LETRAS.slice() : embaralhar(LETRAS, rnd) };
-    });
+    return ProvaSimulado.montarProva(banco, CFG, aluno.serie, aluno.nome + "|" + aluno.numero);
   }
-
   function letraCorreta(item) {
-    // Letra exibida ao aluno que corresponde à resposta correta original.
-    return LETRAS[item.ordem.indexOf(porUid[item.uid].resposta_correta)];
+    return ProvaSimulado.letraCorreta(item, porUid[item.uid]);
   }
 
   // ---------- tela inicial ----------
