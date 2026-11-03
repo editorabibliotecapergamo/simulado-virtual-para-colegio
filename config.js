@@ -30,5 +30,5 @@ window.CONFIG_SIMULADO = {
 
   // Endereço do Google Apps Script que grava os resultados na planilha.
   // Deixe vazio ("") enquanto não estiver configurado. Veja o README.
-  urlPlanilha: ""
+  urlPlanilha: "https://script.google.com/macros/s/AKfycbxCiMI8j0IcDwuF2OYXm2Aa0R2Qr9wbMhLSSbxEvap8uq6c6oN_2tG9iC9AZ8_ejsb6DA/exec"
 };
