@@ -462,3 +462,9 @@ QUESTOES = [
      ["uma estrela de nêutrons.", "uma anã branca.", "uma nebulosa planetária.", "uma gigante vermelha."],
      "Se a massa restante for “pequena”, forma-se uma estrela de nêutrons; se for maior, um buraco negro."),
 ]
+
+# 6º e 7º anos ficam em outro arquivo, para facilitar a revisão.
+from cadernos_4bim_6e7 import MODULOS as _MODULOS_67, QUESTOES as _QUESTOES_67  # noqa: E402
+
+MODULOS.update(_MODULOS_67)
+QUESTOES.extend(_QUESTOES_67)

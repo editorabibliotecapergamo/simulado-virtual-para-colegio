@@ -7,9 +7,7 @@ window.CONFIG_SIMULADO = {
   titulo: "Simulado Online de Ciências",
 
   // Séries disponíveis para o aluno escolher (precisam existir no banco).
-  // 6º e 7º anos estão fora por enquanto: as questões novas (baseadas no Caderno do 4º bimestre)
-  // só existem para 8º e 9º. Para liberar, acrescente "6º Ano" e "7º Ano" de volta à lista.
-  series: ["8º Ano", "9º Ano"],
+  series: ["6º Ano", "7º Ano", "8º Ano", "9º Ano"],
 
   // Composição da prova: 20 fáceis + 20 médias = 40 questões.
   quantidadeFaceis: 20,
