@@ -55,6 +55,17 @@
   }
 
   // ---------- tela inicial ----------
+  // Nome completo: pelo menos duas palavras de 2 letras ou mais (de, da, do, e... não contam),
+  // só com letras, espaços, apóstrofo e hífen. Barra "Ana", "Ana A", "Ana 1" e "Ana .".
+  function nomeCompletoValido(nome) {
+    if (!/^[A-Za-zÀ-ÖØ-öø-ÿ'’\- ]+$/.test(nome)) return false;
+    var particulas = { de: 1, da: 1, do: 1, das: 1, dos: 1, e: 1 };
+    var palavras = nome.split(/\s+/).filter(function (w) {
+      return w.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ]/g, "").length >= 2 && !particulas[w.toLowerCase()];
+    });
+    return palavras.length >= 2;
+  }
+
   function prepararInicio() {
     $("nomeEscola").textContent = CFG.escola || "Colégio";
     $("tituloSimulado").textContent = CFG.titulo || "Simulado Online";
@@ -75,7 +86,7 @@
         data: $("data").value
       };
       var erro = "";
-      if (aluno.nome.split(" ").length < 2) erro = "Digite seu nome completo (nome e sobrenome).";
+      if (!nomeCompletoValido(aluno.nome)) erro = "Digite seu nome e sobrenome completos, sem abreviar (por exemplo: Maria Souza).";
       else if (!aluno.numero || +aluno.numero < 1) erro = "Informe seu número na chamada.";
       else if (!aluno.serie) erro = "Escolha a sua série.";
       else if (!aluno.data) erro = "Informe a data.";
