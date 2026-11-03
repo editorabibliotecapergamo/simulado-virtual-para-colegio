@@ -81,7 +81,7 @@
       else if (!aluno.data) erro = "Informe a data.";
       $("erroInicio").textContent = erro;
       if (erro) return;
-      iniciar(aluno);
+      verificarNumero(aluno);
     });
 
     $("btnRetomar").addEventListener("click", function () { abrirProva(); });
@@ -89,6 +89,35 @@
       if (!confirm("Descartar a prova em andamento e começar outra?")) return;
       limparSalvo(); estado = null; $("cartaoRetomar").hidden = true;
     });
+  }
+
+  // Antes de começar, pergunta à planilha se este número já enviou uma prova nesta série.
+  // Se não for possível perguntar (sem internet, por exemplo), deixa começar: o bloqueio de verdade
+  // é feito no Apps Script na hora de gravar o resultado.
+  function verificarNumero(aluno) {
+    if (!CFG.urlPlanilha) { iniciar(aluno); return; }
+    var botao = $("formInicio").querySelector("button[type=submit]");
+    var textoBotao = botao.textContent;
+    botao.disabled = true; botao.textContent = "Verificando…";
+    var liberar = function () { botao.disabled = false; botao.textContent = textoBotao; };
+    var url = CFG.urlPlanilha + (CFG.urlPlanilha.indexOf("?") >= 0 ? "&" : "?") +
+      "acao=verificar&serie=" + encodeURIComponent(aluno.serie) + "&numero=" + encodeURIComponent(aluno.numero);
+    var limite = new Promise(function (_, rejeita) { setTimeout(function () { rejeita(new Error("tempo esgotado")); }, 10000); });
+    Promise.race([fetch(url).then(function (r) { return r.json(); }), limite])
+      .then(function (resp) {
+        liberar();
+        if (resp && resp.ok === true && resp.bloqueado === true) {
+          $("erroInicio").textContent = "Já existe uma prova enviada com o número " + aluno.numero + " no " + aluno.serie +
+            ". Confira se digitou o seu número corretamente. Se estiver certo, procure o seu professor.";
+          return;
+        }
+        iniciar(aluno);
+      })
+      .catch(function (e) {
+        if (window.console) console.warn("Não foi possível verificar o número:", e);
+        liberar();
+        iniciar(aluno);
+      });
   }
 
   function iniciar(aluno) {
@@ -302,6 +331,10 @@
     } else if (estado.envio === "ok") {
       s.className = "envio ok";
       s.textContent = "Resultado enviado ao professor.";
+    } else if (estado.envio === "bloqueado") {
+      s.className = "envio falha";
+      s.textContent = "Seu resultado NÃO foi registrado: já existe uma prova enviada com o número " + estado.aluno.numero +
+        " no " + estado.aluno.serie + ". Procure o seu professor.";
     } else if (estado.envio === "enviando") {
       s.className = "envio info";
       s.textContent = "Enviando resultado ao professor…";
@@ -337,6 +370,7 @@
       body: JSON.stringify(dados)
     }).then(function (r) { return r.json(); })
       .then(function (resp) {
+        if (resp && resp.bloqueado === true) { estado.envio = "bloqueado"; return; }
         if (!resp || resp.ok !== true) throw new Error((resp && resp.erro) || "resposta inesperada");
         estado.envio = "ok";
       })
@@ -419,7 +453,7 @@
           estado = salvo;
           if (estado.resultado) {
             mostrarResultado();
-            if (estado.envio !== "ok" && CFG.urlPlanilha) enviarResultado();
+            if (estado.envio !== "ok" && estado.envio !== "bloqueado" && CFG.urlPlanilha) enviarResultado();
             return;
           }
           $("textoRetomar").textContent = "Há uma prova em andamento neste aparelho para " + estado.aluno.nome +
