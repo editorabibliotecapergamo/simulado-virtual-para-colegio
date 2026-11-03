@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>Simulado Online</title>
+  <link rel="stylesheet" href="simulado.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="topo-conteudo">
+      <div class="marca">
+        <div class="logo" aria-hidden="true">NJ</div>
+        <div>
+          <div class="escola" id="nomeEscola">Colégio</div>
+          <div class="subtitulo" id="tituloSimulado">Simulado Online</div>
+        </div>
+      </div>
+      <div class="aluno-topo" id="alunoTopo" hidden></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- TELA 1: IDENTIFICAÇÃO -->
+    <section id="telaInicio" class="tela">
+      <div class="cartao">
+        <h1>Identificação do aluno</h1>
+        <p class="ajuda">Preencha seus dados para começar. A prova tem <strong id="totalQuestoesInfo">40</strong> questões de múltipla escolha.</p>
+        <form id="formInicio" novalidate>
+          <label class="campo">
+            <span>Nome completo</span>
+            <input type="text" id="nome" autocomplete="name" required maxlength="100">
+          </label>
+          <div class="linha-campos">
+            <label class="campo">
+              <span>Número</span>
+              <input type="number" id="numero" inputmode="numeric" min="1" max="99" required>
+            </label>
+            <label class="campo">
+              <span>Série</span>
+              <select id="serie" required>
+                <option value="">Escolha…</option>
+              </select>
+            </label>
+          </div>
+          <label class="campo">
+            <span>Data</span>
+            <input type="date" id="data" required>
+          </label>
+          <p class="erro" id="erroInicio" role="alert"></p>
+          <button type="submit" class="btn btn-primario btn-grande">Começar a prova</button>
+        </form>
+        <div class="instrucoes">
+          <strong>Antes de começar</strong>
+          <ul>
+            <li>Cada questão tem 5 alternativas e só uma está correta.</li>
+            <li>Você pode voltar e trocar respostas até clicar em <em>Finalizar</em>.</li>
+            <li>Suas respostas ficam salvas neste aparelho: se a página fechar, é só abrir o link de novo.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="cartao retomar" id="cartaoRetomar" hidden>
+        <p id="textoRetomar"></p>
+        <div class="acoes">
+          <button type="button" class="btn btn-primario" id="btnRetomar">Continuar prova</button>
+          <button type="button" class="btn btn-secundario" id="btnDescartar">Começar outra</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TELA 2: PROVA -->
+    <section id="telaProva" class="tela" hidden>
+      <div class="barra-progresso" aria-hidden="true"><div id="progresso"></div></div>
+      <div class="prova-layout">
+        <article class="cartao questao" id="questao" aria-live="polite"></article>
+        <aside class="cartao painel">
+          <div class="painel-titulo">
+            <strong>Cartão-resposta</strong>
+            <span id="contadorRespondidas">0/40</span>
+          </div>
+          <div class="grade" id="grade"></div>
+          <button type="button" class="btn btn-finalizar" id="btnFinalizar">Finalizar prova</button>
+        </aside>
+      </div>
+      <nav class="navegacao">
+        <button type="button" class="btn btn-secundario" id="btnAnterior">‹ Anterior</button>
+        <button type="button" class="btn btn-primario" id="btnProxima">Próxima ›</button>
+      </nav>
+    </section>
+
+    <!-- TELA 3: RESULTADO -->
+    <section id="telaResultado" class="tela" hidden>
+      <div class="cartao resultado-resumo">
+        <h1>Prova finalizada</h1>
+        <div id="dadosAluno" class="dados-aluno"></div>
+        <div class="placar">
+          <div><span class="placar-valor" id="nota">0,0</span><span class="placar-rotulo">nota (0 a 10)</span></div>
+          <div><span class="placar-valor" id="acertos">0</span><span class="placar-rotulo">acertos</span></div>
+        </div>
+        <p class="envio" id="statusEnvio"></p>
+        <div class="acoes">
+          <button type="button" class="btn btn-secundario" id="btnReenviar" hidden>Tentar enviar de novo</button>
+          <button type="button" class="btn btn-secundario" id="btnImprimir">Imprimir / salvar PDF</button>
+          <button type="button" class="btn btn-secundario" id="btnNovaProva">Nova prova</button>
+        </div>
+      </div>
+      <div id="gabarito"></div>
+    </section>
+
+    <p class="carregando" id="carregando">Carregando questões…</p>
+  </main>
+
+  <dialog id="dialogo">
+    <form method="dialog">
+      <p id="dialogoTexto"></p>
+      <div class="acoes">
+        <button value="nao" class="btn btn-secundario">Voltar</button>
+        <button value="sim" class="btn btn-primario">Finalizar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="config.js"></script>
+  <script src="prova.js"></script>
+  <script src="simulado.js"></script>
+</body>
+</html>
