@@ -47,6 +47,10 @@ Branch: `main`, pasta `/ (root)` → **Save**. Em 1 a 2 minutos o link fica disp
 Cada prova finalizada vira uma linha na primeira aba da planilha (nome, número, série, data, acertos, nota,
 duração e as respostas marcadas).
 
+**Um envio por número:** cada aluno (série + número) só pode enviar uma prova. O site avisa ao digitar o número
+e o Apps Script recusa um segundo envio. Para liberar um aluno (por exemplo, se outro usou o número dele),
+troque "Válido" por "Liberado" na última coluna ("Situação") da linha do primeiro envio, ou apague a linha.
+
 ### Limitações conhecidas
 
 - O gabarito fica dentro do site (`questoes.json`) e a página `gabarito.html` não tem senha. Um aluno com conhecimento técnico conseguiria encontrá-lo.
