@@ -307,7 +307,7 @@
       s.textContent = "Enviando resultado ao professor…";
     } else {
       s.className = "envio falha";
-      s.textContent = "Não foi possível enviar o resultado. Verifique a internet e tente de novo.";
+      s.textContent = "Não foi possível enviar o resultado ao professor. Verifique a internet e toque em \"Tentar enviar de novo\"." + (estado.erroEnvio ? " (" + estado.erroEnvio + ")" : "");
       reenviar.hidden = false;
     }
   }
@@ -327,26 +327,68 @@
       }).join(" "),
       questoes: r.detalhes.map(function (d) { return d.uid + "=" + (d.marcadaOriginal || "-"); }).join(" ")
     };
+    dados.id = estado.inicio + "|" + a.nome + "|" + a.numero + "|" + a.serie;
     estado.envio = "enviando";
     atualizarStatusEnvio();
+    // text/plain evita a "pré-verificação" do navegador; o Apps Script responde {"ok":true}.
     fetch(CFG.urlPlanilha, {
       method: "POST",
-      mode: "no-cors",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(dados)
-    }).then(function () {
-      estado.envio = "ok";
-    }).catch(function () {
-      estado.envio = "falha";
-    }).then(function () {
-      salvar();
-      atualizarStatusEnvio();
+    }).then(function (r) { return r.json(); })
+      .then(function (resp) {
+        if (!resp || resp.ok !== true) throw new Error((resp && resp.erro) || "resposta inesperada");
+        estado.envio = "ok";
+      })
+      .catch(function (e) {
+        estado.envio = "falha";
+        estado.erroEnvio = String(e && e.message || e);
+        if (window.console) console.error("Falha ao enviar para a planilha:", e);
+      })
+      .then(function () {
+        salvar();
+        atualizarStatusEnvio();
+      });
+  }
+
+  // ---------- PDF das respostas do aluno (sem indicar acertos) ----------
+  function montarMinhasRespostas() {
+    var a = estado.aluno;
+    var box = $("minhasRespostas");
+    box.innerHTML = "";
+    box.appendChild(el("h1", null, (CFG.escola || "") + " · " + (CFG.titulo || "Simulado")));
+    box.appendChild(el("p", "dados-aluno", a.nome + " · Nº " + a.numero + " · " + a.serie + " · " + dataBR(a.data)));
+    box.appendChild(el("p", "dados-aluno", "Minhas respostas (para estudar depois). O gabarito será entregue pelo professor."));
+    estado.questoes.forEach(function (item, i) {
+      var q = porUid[item.uid];
+      var marcada = estado.respostas[i];
+      var c = el("div", "copia-questao");
+      c.appendChild(el("p", "enunciado", (i + 1) + ". " + q.enunciado));
+      item.ordem.forEach(function (original, pos) {
+        var letra = LETRAS[pos];
+        var linha = el("p", "copia-alt" + (letra === marcada ? " marcada" : ""),
+          (letra === marcada ? "(X) " : "(  ) ") + letra + ") " + q.alternativas[original]);
+        c.appendChild(linha);
+      });
+      if (!marcada) c.appendChild(el("p", "copia-branco", "Questão em branco."));
+      box.appendChild(c);
     });
+  }
+
+  function salvarMinhasRespostas() {
+    montarMinhasRespostas();
+    document.body.classList.add("imprimindo-respostas");
+    var limpar = function () {
+      document.body.classList.remove("imprimindo-respostas");
+      window.removeEventListener("afterprint", limpar);
+    };
+    window.addEventListener("afterprint", limpar);
+    window.print();
   }
 
   function prepararResultado() {
     $("btnReenviar").addEventListener("click", enviarResultado);
-    $("btnImprimir").addEventListener("click", function () { window.print(); });
+    $("btnImprimir").addEventListener("click", salvarMinhasRespostas);
     $("btnNovaProva").addEventListener("click", function () {
       if (!confirm("Começar uma nova prova? O resultado desta tela será apagado deste aparelho.")) return;
       limparSalvo();

@@ -62,8 +62,17 @@
     var faceis = selecionar(daSerie.filter(function (q) { return q.dificuldade === "Fácil"; }), cfg.quantidadeFaceis || 20, rnd);
     var medias = selecionar(daSerie.filter(function (q) { return q.dificuldade === "Médio"; }), cfg.quantidadeMedias || 20, rnd);
     var prova = embaralhar(faceis.concat(medias), rnd);
-    return prova.map(function (q) {
-      return { uid: q.uid, ordem: cfg.embaralharAlternativas === false ? LETRAS.slice() : embaralhar(LETRAS, rnd) };
+    // Letras-alvo da resposta certa, em partes iguais (A–E), para o gabarito não ficar concentrado numa letra.
+    var alvos = [];
+    for (var n = 0; n < prova.length; n++) alvos.push(LETRAS[n % LETRAS.length]);
+    alvos = embaralhar(alvos, rnd);
+    return prova.map(function (q, n) {
+      if (cfg.embaralharAlternativas === false) return { uid: q.uid, ordem: LETRAS.slice() };
+      var ordem = embaralhar(LETRAS, rnd);
+      var pos = LETRAS.indexOf(alvos[n]);
+      var atual = ordem.indexOf(q.resposta_correta);
+      var troca = ordem[pos]; ordem[pos] = ordem[atual]; ordem[atual] = troca;
+      return { uid: q.uid, ordem: ordem };
     });
   }
 
