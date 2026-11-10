@@ -71,28 +71,22 @@
     $("tituloSimulado").textContent = CFG.titulo || "Simulado Online";
     document.title = (CFG.titulo || "Simulado Online") + " | " + (CFG.escola || "");
     $("totalQuestoesInfo").textContent = (CFG.quantidadeFaceis || 20) + (CFG.quantidadeMedias || 20);
-    var sel = $("serie");
-    (CFG.series || []).forEach(function (s) {
-      var o = el("option", null, s); o.value = s; sel.appendChild(o);
-    });
     $("data").value = hojeISO();
 
     $("formInicio").addEventListener("submit", function (ev) {
       ev.preventDefault();
       var aluno = {
         nome: $("nome").value.trim().replace(/\s+/g, " "),
-        numero: $("numero").value.trim(),
-        serie: $("serie").value,
+        codigo: normalizarCodigo($("codigo").value),
         data: $("data").value
       };
       var erro = "";
       if (!nomeCompletoValido(aluno.nome)) erro = "Digite seu nome e sobrenome completos, sem abreviar (por exemplo: Maria Souza).";
-      else if (!aluno.numero || +aluno.numero < 1) erro = "Informe seu número na chamada.";
-      else if (!aluno.serie) erro = "Escolha a sua série.";
+      else if (!/^[A-Z]{3}[0-9]{3}$/.test(aluno.codigo)) erro = "Digite o seu código de acesso: 3 letras e 3 números (por exemplo: ABC123).";
       else if (!aluno.data) erro = "Informe a data.";
       $("erroInicio").textContent = erro;
       if (erro) return;
-      verificarNumero(aluno);
+      verificarCodigo(aluno);
     });
 
     $("btnRetomar").addEventListener("click", function () { abrirProva(); });
@@ -102,32 +96,45 @@
     });
   }
 
-  // Antes de começar, pergunta à planilha se este número já enviou uma prova nesta série.
-  // Se não for possível perguntar (sem internet, por exemplo), deixa começar: o bloqueio de verdade
-  // é feito no Apps Script na hora de gravar o resultado.
-  function verificarNumero(aluno) {
-    if (!CFG.urlPlanilha) { iniciar(aluno); return; }
+  function normalizarCodigo(v) {
+    return String(v || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  }
+  function rotuloSerie(a) {
+    return a.serie + (a.turma ? " " + a.turma : "");
+  }
+
+  // Antes de começar, pergunta à planilha se o código existe e ainda não foi usado.
+  // A resposta traz a série, a turma e o número do aluno. Sem conseguir perguntar, não começa:
+  // sem isso não dá para saber qual prova o aluno faz.
+  function verificarCodigo(aluno) {
+    if (!CFG.urlPlanilha) {
+      $("erroInicio").textContent = "A validação de código não está configurada (falta urlPlanilha em config.js).";
+      return;
+    }
     var botao = $("formInicio").querySelector("button[type=submit]");
     var textoBotao = botao.textContent;
     botao.disabled = true; botao.textContent = "Verificando…";
     var liberar = function () { botao.disabled = false; botao.textContent = textoBotao; };
     var url = CFG.urlPlanilha + (CFG.urlPlanilha.indexOf("?") >= 0 ? "&" : "?") +
-      "acao=verificar&serie=" + encodeURIComponent(aluno.serie) + "&numero=" + encodeURIComponent(aluno.numero);
-    var limite = new Promise(function (_, rejeita) { setTimeout(function () { rejeita(new Error("tempo esgotado")); }, 10000); });
+      "acao=verificar&codigo=" + encodeURIComponent(aluno.codigo);
+    var limite = new Promise(function (_, rejeita) { setTimeout(function () { rejeita(new Error("tempo esgotado")); }, 15000); });
     Promise.race([fetch(url).then(function (r) { return r.json(); }), limite])
       .then(function (resp) {
         liberar();
-        if (resp && resp.ok === true && resp.bloqueado === true) {
-          $("erroInicio").textContent = "Já existe uma prova enviada com o número " + aluno.numero + " no " + aluno.serie +
-            ". Confira se digitou o seu número corretamente. Se estiver certo, procure o seu professor.";
+        if (!resp || resp.ok !== true) throw new Error((resp && resp.erro) || "resposta inesperada");
+        if (resp.valido !== true) {
+          $("erroInicio").textContent = resp.motivo === "usado"
+            ? "Este código já foi usado para enviar uma prova. Se foi um engano, procure o seu professor."
+            : "Código não encontrado. Confira as letras e os números e tente de novo.";
           return;
         }
+        aluno.serie = resp.serie; aluno.turma = resp.turma; aluno.numero = resp.numero;
         iniciar(aluno);
       })
       .catch(function (e) {
-        if (window.console) console.warn("Não foi possível verificar o número:", e);
+        if (window.console) console.warn("Não foi possível verificar o código:", e);
         liberar();
-        iniciar(aluno);
+        $("erroInicio").textContent = "Não foi possível verificar o código agora. Confira a internet e tente de novo.";
       });
   }
 
@@ -149,7 +156,7 @@
   // ---------- prova ----------
   function abrirProva() {
     $("alunoTopo").hidden = false;
-    $("alunoTopo").textContent = estado.aluno.nome + " · Nº " + estado.aluno.numero + " · " + estado.aluno.serie;
+    $("alunoTopo").textContent = estado.aluno.nome + " · Nº " + estado.aluno.numero + " · " + rotuloSerie(estado.aluno);
     montarGrade();
     mostrarTela("telaProva");
     mostrarQuestao(estado.atual || 0);
@@ -291,8 +298,8 @@
     var r = estado.resultado;
     var a = estado.aluno;
     $("alunoTopo").hidden = false;
-    $("alunoTopo").textContent = a.nome + " · Nº " + a.numero + " · " + a.serie;
-    $("dadosAluno").textContent = a.nome + " · Nº " + a.numero + " · " + a.serie + " · " + dataBR(a.data);
+    $("alunoTopo").textContent = a.nome + " · Nº " + a.numero + " · " + rotuloSerie(a);
+    $("dadosAluno").textContent = a.nome + " · Nº " + a.numero + " · " + rotuloSerie(a) + " · " + dataBR(a.data);
     $("nota").textContent = r.nota.toFixed(1).replace(".", ",");
     $("acertos").textContent = r.acertos + "/" + r.total;
     atualizarStatusEnvio();
@@ -344,8 +351,8 @@
       s.textContent = "Resultado enviado ao professor.";
     } else if (estado.envio === "bloqueado") {
       s.className = "envio falha";
-      s.textContent = "Seu resultado NÃO foi registrado: já existe uma prova enviada com o número " + estado.aluno.numero +
-        " no " + estado.aluno.serie + ". Procure o seu professor.";
+      s.textContent = "Seu resultado NÃO foi registrado: o código " + estado.aluno.codigo +
+        " já foi usado para enviar uma prova. Procure o seu professor.";
     } else if (estado.envio === "enviando") {
       s.className = "envio info";
       s.textContent = "Enviando resultado ao professor…";
@@ -361,7 +368,7 @@
     var r = estado.resultado;
     var a = estado.aluno;
     var dados = {
-      nome: a.nome, numero: a.numero, serie: a.serie, data: a.data,
+      nome: a.nome, codigo: a.codigo, numero: a.numero, serie: a.serie, data: a.data,
       codigoProva: estado.codigoProva,
       acertos: r.acertos, total: r.total, nota: r.nota,
       inicio: estado.inicio, fim: estado.fim,
@@ -371,7 +378,7 @@
       }).join(" "),
       questoes: r.detalhes.map(function (d) { return d.uid + "=" + (d.marcadaOriginal || "-"); }).join(" ")
     };
-    dados.id = estado.inicio + "|" + a.nome + "|" + a.numero + "|" + a.serie;
+    dados.id = estado.inicio + "|" + a.nome + "|" + a.codigo;
     estado.envio = "enviando";
     atualizarStatusEnvio();
     // text/plain evita a "pré-verificação" do navegador; o Apps Script responde {"ok":true}.
@@ -402,7 +409,7 @@
     var box = $("minhasRespostas");
     box.innerHTML = "";
     box.appendChild(el("h1", null, (CFG.escola || "") + " · " + (CFG.titulo || "Simulado")));
-    box.appendChild(el("p", "dados-aluno", a.nome + " · Nº " + a.numero + " · " + a.serie + " · " + dataBR(a.data)));
+    box.appendChild(el("p", "dados-aluno", a.nome + " · Nº " + a.numero + " · " + rotuloSerie(a) + " · " + dataBR(a.data)));
     box.appendChild(el("p", "dados-aluno", "Minhas respostas (para estudar depois). O gabarito será entregue pelo professor."));
     estado.questoes.forEach(function (item, i) {
       var q = porUid[item.uid];
@@ -468,7 +475,7 @@
             return;
           }
           $("textoRetomar").textContent = "Há uma prova em andamento neste aparelho para " + estado.aluno.nome +
-            " (" + estado.aluno.serie + "), com " + Object.keys(estado.respostas).length + " de " +
+            " (" + rotuloSerie(estado.aluno) + "), com " + Object.keys(estado.respostas).length + " de " +
             estado.questoes.length + " questões respondidas.";
           $("cartaoRetomar").hidden = false;
         }

@@ -66,6 +66,8 @@ h1 { font-size: 22px; color: var(--primaria); margin-bottom: 6px; }
 }
 .campo input:focus, .campo select:focus { outline: 3px solid #bfdbfe; border-color: var(--primaria); }
 .linha-campos { display: flex; gap: 12px; }
+.campo .dica { display: block; margin-top: 4px; font-size: 12.5px; color: #6b7280; }
+#codigo { text-transform: uppercase; letter-spacing: 2px; }
 .erro { color: var(--errado); font-size: 14px; min-height: 1.2em; margin-bottom: 8px; }
 
 .instrucoes {

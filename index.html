@@ -32,18 +32,12 @@
             <span>Nome completo</span>
             <input type="text" id="nome" autocomplete="name" required maxlength="100">
           </label>
-          <div class="linha-campos">
-            <label class="campo">
-              <span>Número</span>
-              <input type="number" id="numero" inputmode="numeric" min="1" max="99" required>
-            </label>
-            <label class="campo">
-              <span>Série</span>
-              <select id="serie" required>
-                <option value="">Escolha…</option>
-              </select>
-            </label>
-          </div>
+          <label class="campo">
+            <span>Código de acesso</span>
+            <input type="text" id="codigo" autocomplete="off" autocapitalize="characters" spellcheck="false"
+                   maxlength="12" placeholder="Ex.: ABC123" required>
+            <small class="dica">O código foi entregue pelo professor (3 letras e 3 números). Cada código só pode ser usado uma vez.</small>
+          </label>
           <label class="campo">
             <span>Data</span>
             <input type="date" id="data" required>

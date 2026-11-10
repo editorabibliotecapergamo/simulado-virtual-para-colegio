@@ -15,12 +15,14 @@
  *
  * Para testar: abra o endereço /exec no navegador. Deve aparecer "Simulado online: ativo".
  *
- * UM ENVIO POR NÚMERO
- * Cada aluno (série + número) só pode enviar uma prova. Um segundo envio com o mesmo número
- * na mesma série é recusado, e o site também avisa o aluno antes de ele começar.
- * Para LIBERAR um aluno (por exemplo, se outro aluno usou o número dele por engano):
- * na última coluna ("Situação") da linha do primeiro envio, troque "Válido" por "Liberado".
- * Apagar a linha também libera. A linha "Liberada" fica na planilha como histórico.
+ * CÓDIGO DE ACESSO (UM ENVIO POR ALUNO)
+ * A segunda aba da planilha, chamada "Códigos", guarda um código por aluno (3 letras + 3 números),
+ * com a série, a turma e o número na chamada. Os nomes NÃO ficam nessa aba nem no site.
+ * - O aluno digita o código; o site pergunta a este script se ele existe e está "Disponível".
+ * - Ao receber a prova, o script grava o resultado e troca a Situação do código para "Usado".
+ *   Um código "Usado" não entra de novo.
+ * Para LIBERAR um aluno (celular quebrou, enviou sem querer etc.): na aba "Códigos", troque a
+ * Situação desse código de "Usado" para "Disponível". O resultado antigo continua na primeira aba.
  */
 
 // Só é usado se o script NÃO tiver sido criado de dentro da planilha.
@@ -29,17 +31,24 @@ var ID_PLANILHA = "1WBE_STUHO-NFqKfBt8MhY0lzfhf3UJNbxm856VC2TnA";
 var CABECALHO = [
   "Recebido em", "Nome", "Número", "Série", "Data informada", "Acertos", "Total", "Nota",
   "Duração (min)", "Código da prova", "Respostas (nº:letra)", "Questões do banco (uid=letra original)",
-  "ID do envio", "Situação"
+  "ID do envio", "Situação", "Turma", "Código de acesso"
 ];
-var COL_NUMERO = 3, COL_SERIE = 4, COL_ID = 13, COL_SITUACAO = 14;
-var VALIDO = "Válido", LIBERADO = "Liberado";
+var COL_ID = 13;
+var VALIDO = "Válido";
+
+// Aba com os códigos de acesso: Código | Série | Turma | Número | Situação | Usado em
+var ABA_CODIGOS = "Códigos";
+var CAB_CODIGOS = ["Código", "Série", "Turma", "Número", "Situação", "Usado em"];
+var DISPONIVEL = "Disponível", USADO = "Usado";
 
 function doGet(e) {
   var p = (e && e.parameter) || {};
   if (p.acao === "verificar") {
     try {
-      var aba = abrirAba();
-      return resposta({ ok: true, bloqueado: existeEnvio(aba, p.serie, p.numero) });
+      var achado = buscarCodigo(p.codigo);
+      if (!achado) return resposta({ ok: true, valido: false, motivo: "invalido" });
+      if (achado.situacao === USADO) return resposta({ ok: true, valido: false, motivo: "usado" });
+      return resposta({ ok: true, valido: true, serie: achado.serie, turma: achado.turma, numero: achado.numero });
     } catch (err) {
       return resposta({ ok: false, erro: String(err) });
     }
@@ -62,20 +71,21 @@ function doPost(e) {
       if (achou) return resposta({ ok: true, repetido: true });
     }
 
-    // Um envio por número (dentro da mesma série), a menos que o professor tenha liberado.
-    if (existeEnvio(aba, d.serie, d.numero)) {
-      return resposta({
-        ok: false, bloqueado: true,
-        erro: "Já existe uma prova enviada com este número nesta série."
-      });
+    // Um envio por código: o código tem de existir e estar "Disponível".
+    var cod = buscarCodigo(d.codigo);
+    if (!cod) return resposta({ ok: false, codigoInvalido: true, erro: "Código de acesso inválido." });
+    if (cod.situacao === USADO) {
+      return resposta({ ok: false, bloqueado: true, erro: "Este código já foi usado para enviar uma prova." });
     }
 
+    // Série, turma e número vêm da aba "Códigos", não do que o navegador mandou.
     aba.appendRow([
-      new Date(), texto(d.nome), texto(d.numero), texto(d.serie), texto(d.data),
+      new Date(), texto(d.nome), texto(cod.numero), texto(cod.serie), texto(d.data),
       Number(d.acertos) || 0, Number(d.total) || 0, Number(d.nota) || 0,
       Number(d.duracaoMin) || 0, texto(d.codigoProva), texto(d.respostas), texto(d.questoes), id,
-      VALIDO
+      VALIDO, texto(cod.turma), cod.codigo
     ]);
+    cod.aba.getRange(cod.linha, 5, 1, 2).setValues([[USADO, new Date()]]);
     return resposta({ ok: true });
   } catch (err) {
     return resposta({ ok: false, erro: String(err) });
@@ -84,12 +94,15 @@ function doPost(e) {
   }
 }
 
-function abrirAba() {
-  var planilha = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(ID_PLANILHA);
-  return planilha.getSheets()[0]; // primeira aba da planilha
+function planilha() {
+  return SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(ID_PLANILHA);
 }
 
-// Cria/atualiza o cabeçalho, a coluna "Situação" e a lista "Válido / Liberado".
+function abrirAba() {
+  return planilha().getSheets()[0]; // primeira aba da planilha
+}
+
+// Cria/atualiza o cabeçalho dos resultados.
 function prepararAba(aba) {
   if (aba.getLastRow() === 0) aba.appendRow(CABECALHO);
   aba.setFrozenRows(1);
@@ -97,8 +110,8 @@ function prepararAba(aba) {
 
   var ultima = aba.getLastRow();
   if (ultima > 1) {
-    // Linhas de envios antigos (de antes desta coluna existir) passam a valer como "Válido".
-    var faixa = aba.getRange(2, COL_SITUACAO, ultima - 1, 1);
+    // Linhas de envios antigos (de antes da coluna "Situação" existir) passam a valer como "Válido".
+    var faixa = aba.getRange(2, 14, ultima - 1, 1);
     var valores = faixa.getValues();
     var mudou = false;
     for (var i = 0; i < valores.length; i++) {
@@ -106,34 +119,31 @@ function prepararAba(aba) {
     }
     if (mudou) faixa.setValues(valores);
   }
-  var regra = SpreadsheetApp.newDataValidation().requireValueInList([VALIDO, LIBERADO], true).setAllowInvalid(true).build();
-  aba.getRange(2, COL_SITUACAO, Math.max(aba.getMaxRows() - 1, 1), 1).setDataValidation(regra);
 }
 
-// Já existe um envio "Válido" (não liberado) para esta série + número?
-function existeEnvio(aba, serie, numero) {
+// Procura o código (sem diferenciar maiúsculas, espaços ou hífen) na aba "Códigos".
+function buscarCodigo(valor) {
+  var alvo = normalizarCodigo(valor);
+  if (!/^[A-Z]{3}[0-9]{3}$/.test(alvo)) return null;
+  var aba = planilha().getSheetByName(ABA_CODIGOS);
+  if (!aba) throw new Error('A aba "' + ABA_CODIGOS + '" não existe na planilha.');
   var ultima = aba.getLastRow();
-  if (ultima < 2) return false;
-  var alvoSerie = normalizar(serie), alvoNumero = normalizarNumero(numero);
-  if (!alvoSerie || alvoNumero === "") return false;
-  var linhas = aba.getRange(2, 1, ultima - 1, COL_SITUACAO).getValues();
+  if (ultima < 2) return null;
+  var linhas = aba.getRange(2, 1, ultima - 1, CAB_CODIGOS.length).getValues();
   for (var i = 0; i < linhas.length; i++) {
     var l = linhas[i];
-    if (String(l[COL_SITUACAO - 1]).trim().toLowerCase() === LIBERADO.toLowerCase()) continue;
-    if (normalizar(l[COL_SERIE - 1]) === alvoSerie && normalizarNumero(l[COL_NUMERO - 1]) === alvoNumero) return true;
+    if (normalizarCodigo(l[0]) !== alvo) continue;
+    return {
+      aba: aba, linha: i + 2, codigo: alvo,
+      serie: String(l[1]).trim(), turma: String(l[2]).trim(), numero: String(l[3]).trim(),
+      situacao: String(l[4]).trim().toLowerCase() === USADO.toLowerCase() ? USADO : DISPONIVEL
+    };
   }
-  return false;
+  return null;
 }
 
-function normalizar(v) {
-  return String(v == null ? "" : v).replace(/^'/, "").trim().toLowerCase();
-}
-
-// "07", 7 e "7" são o mesmo número.
-function normalizarNumero(v) {
-  var s = String(v == null ? "" : v).replace(/^'/, "").trim();
-  var n = Number(s);
-  return s !== "" && !isNaN(n) ? String(n) : s.toLowerCase();
+function normalizarCodigo(v) {
+  return String(v == null ? "" : v).replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 }
 
 function resposta(obj) {
