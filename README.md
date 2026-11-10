@@ -5,7 +5,7 @@ Simulado para facilitar os estudos e avaliação dos alunos
 
 O site do aluno é o `index.html`. Ele funciona no computador, tablet e celular.
 
-1. O aluno informa **nome, número, série e data**.
+1. O aluno informa **nome, código de acesso e data**. A série, a turma e o número vêm do código.
 2. Recebe uma prova de **40 questões** (20 fáceis + 20 médias) sorteadas do banco da sua série,
    distribuídas igualmente entre os módulos. **Todos os alunos da mesma série fazem a mesma prova.**
 3. Responde no próprio aparelho. As respostas ficam salvas: se a página fechar, é só abrir o link de novo.
@@ -47,9 +47,12 @@ Branch: `main`, pasta `/ (root)` → **Save**. Em 1 a 2 minutos o link fica disp
 Cada prova finalizada vira uma linha na primeira aba da planilha (nome, número, série, data, acertos, nota,
 duração e as respostas marcadas).
 
-**Um envio por número:** cada aluno (série + número) só pode enviar uma prova. O site avisa ao digitar o número
-e o Apps Script recusa um segundo envio. Para liberar um aluno (por exemplo, se outro usou o número dele),
-troque "Válido" por "Liberado" na última coluna ("Situação") da linha do primeiro envio, ou apague a linha.
+**Código de acesso (um envio por aluno):** cada aluno recebe um código de 3 letras + 3 números (ex.: `ABC123`).
+Os códigos ficam na segunda aba da planilha, chamada **Códigos** (colunas: Código, Série, Turma, Número,
+Situação, Usado em), **nunca no repositório**: ele é público e os códigos, e principalmente os nomes
+dos alunos, não podem ser publicados nele. A aba não tem nomes. Ao enviar a prova, o Apps Script grava o resultado
+e troca a Situação do código para "Usado"; um código usado não entra de novo.
+Para liberar um aluno, troque "Usado" por "Disponível" na aba Códigos.
 
 ### Limitações conhecidas
 
