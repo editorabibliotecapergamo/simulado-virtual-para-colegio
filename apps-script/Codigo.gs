@@ -28,9 +28,10 @@
  * Cada simulado tem a sua aba de resultados e a sua própria Situação do código:
  *   - Ciências (o principal): resultados na primeira aba; Situação / Usado em = colunas E e F de "Códigos".
  *   - Biologia (?s=biologia no link): resultados na aba "Biologia" (criada sozinha);
- *     Situação / Usado em = colunas G e H de "Códigos" (as colunas G e H vazias contam como "Disponível").
- * O mesmo código vale uma vez em cada simulado. Para liberar o aluno no simulado de Biologia,
- * troque a Situação na coluna G.
+ *     Situação / Usado em = colunas G e H de "Códigos". É um simulado RESTRITO: só entra o código que
+ *     tiver "Disponível" escrito na coluna G; célula vazia = sem acesso (o aluno vê "não liberado").
+ * O mesmo código vale uma vez em cada simulado. Para dar acesso a mais um aluno na Biologia, escreva
+ * "Disponível" na coluna G da linha dele; para liberar quem já usou, troque "Usado" por "Disponível".
  */
 
 // Só é usado se o script NÃO tiver sido criado de dentro da planilha.
@@ -47,13 +48,14 @@ var VALIDO = "Válido";
 // Aba com os códigos de acesso: Código | Série | Turma | Número | Situação | Usado em
 var ABA_CODIGOS = "Códigos";
 var CAB_CODIGOS = ["Código", "Série", "Turma", "Número", "Situação", "Usado em"];
-var DISPONIVEL = "Disponível", USADO = "Usado";
+var DISPONIVEL = "Disponível", USADO = "Usado", SEM_ACESSO = "Sem acesso";
 
 // Simulados: "" é o principal (primeira aba). Os demais têm aba de resultados própria.
 // colSituacao = coluna (1 = A) da Situação do código nesse simulado; "Usado em" fica na coluna seguinte.
 var SIMULADOS = {
   "": { aba: null, colSituacao: 5, nome: "Ciências" },
-  "biologia": { aba: "Biologia", colSituacao: 7, nome: "Biologia" }
+  // restrito: só entra quem tiver "Disponível" escrito na coluna G (célula vazia = sem acesso).
+  "biologia": { aba: "Biologia", colSituacao: 7, nome: "Biologia", restrito: true }
 };
 function configSimulado(id) {
   id = String(id == null ? "" : id).trim().toLowerCase();
@@ -68,6 +70,7 @@ function doGet(e) {
       var sim = configSimulado(p.simulado);
       var achado = buscarCodigo(p.codigo, sim);
       if (!achado) return resposta({ ok: true, valido: false, motivo: "invalido" });
+      if (achado.situacao === SEM_ACESSO) return resposta({ ok: true, valido: false, motivo: "sem_acesso" });
       if (achado.situacao === USADO) return resposta({ ok: true, valido: false, motivo: "usado" });
       return resposta({ ok: true, valido: true, serie: achado.serie, turma: achado.turma, numero: achado.numero });
     } catch (err) {
@@ -97,6 +100,7 @@ function doPost(e) {
     // Um envio por código: o código tem de existir e estar "Disponível".
     var cod = buscarCodigo(d.codigo, sim);
     if (!cod) return resposta({ ok: false, codigoInvalido: true, erro: "Código de acesso inválido." });
+    if (cod.situacao === SEM_ACESSO) return resposta({ ok: false, codigoInvalido: true, erro: "Este código não tem acesso a este simulado." });
     if (cod.situacao === USADO) {
       return resposta({ ok: false, bloqueado: true, erro: "Este código já foi usado para enviar uma prova." });
     }
@@ -174,10 +178,13 @@ function buscarCodigo(valor, sim) {
   for (var i = 0; i < linhas.length; i++) {
     var l = linhas[i];
     if (normalizarCodigo(l[0]) !== alvo) continue;
+    var sit = String(l[sim.colSituacao - 1]).trim().toLowerCase();
+    var situacao = sit === USADO.toLowerCase() ? USADO : DISPONIVEL;
+    if (sim.restrito && sit !== USADO.toLowerCase() && sit !== DISPONIVEL.toLowerCase()) situacao = SEM_ACESSO;
     return {
       aba: aba, linha: i + 2, codigo: alvo,
       serie: String(l[1]).trim(), turma: String(l[2]).trim(), numero: String(l[3]).trim(),
-      situacao: String(l[sim.colSituacao - 1]).trim().toLowerCase() === USADO.toLowerCase() ? USADO : DISPONIVEL
+      situacao: situacao
     };
   }
   return null;

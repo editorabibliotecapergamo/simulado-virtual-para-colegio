@@ -126,7 +126,9 @@
         if (resp.valido !== true) {
           $("erroInicio").textContent = resp.motivo === "usado"
             ? "Este código já foi usado para enviar uma prova. Se foi um engano, procure o seu professor."
-            : "Código não encontrado. Confira as letras e os números e tente de novo.";
+            : resp.motivo === "sem_acesso"
+              ? "Este simulado não está liberado para o seu código. Confira o link com o seu professor."
+              : "Código não encontrado. Confira as letras e os números e tente de novo.";
           return;
         }
         var permitidas = CFG.seriesPermitidas || [];
