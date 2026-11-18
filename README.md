@@ -66,8 +66,10 @@ Como funciona: as questões ficam em `questoes_biologia.json` (gerado por `pytho
 `scripts/dados/biologia_50.py`) e a configuração em `window.SIMULADOS` no `config.js`. O aluno usa o **mesmo código de acesso**,
 e o código vale uma vez em cada simulado: o Apps Script guarda a Situação do simulado de Biologia nas colunas G e H da
 aba **Códigos** e grava os resultados numa aba própria chamada **Biologia** (criada sozinha no primeiro envio).
-Para liberar um aluno só no simulado de Biologia, troque "Usado" por "Disponível" na coluna G. Para limitar o simulado
-a algumas séries, preencha `seriesPermitidas` (ex.: `["8º Ano", "9º Ano"]`).
+O simulado de Biologia é **restrito**: só entra o código que tiver "Disponível" escrito na coluna G da aba **Códigos**
+(célula vazia = "este simulado não está liberado para o seu código"). Para dar acesso a mais alguém, escreva "Disponível"
+na coluna G da linha dele; para liberar quem já usou, troque "Usado" por "Disponível". A lista de quem tem acesso fica só na
+planilha, nunca no site público.
 Depois de mudar o `Codigo.gs`, publique uma **nova versão** no Apps Script.
 
 ### Limitações conhecidas
