@@ -54,6 +54,22 @@ dos alunos, não podem ser publicados nele. A aba não tem nomes. Ao enviar a pr
 e troca a Situação do código para "Usado"; um código usado não entra de novo.
 Para liberar um aluno, troque "Usado" por "Disponível" na aba Códigos.
 
+### Outros simulados no mesmo site (Biologia)
+
+Além do simulado de Ciências (`index.html`), o site tem o **Simulado de Biologia**: 50 questões (25 fáceis + 25 médias)
+sobre artrópodes, equinodermos, cordados, membrana celular e divisão celular. Os links são:
+
+- Prova: `index.html?s=biologia`
+- Gabarito do professor: `gabarito.html?s=biologia` (imprima em PDF)
+
+Como funciona: as questões ficam em `questoes_biologia.json` (gerado por `python3 scripts/gerar_biologia.py`, a partir de
+`scripts/dados/biologia_50.py`) e a configuração em `window.SIMULADOS` no `config.js`. O aluno usa o **mesmo código de acesso**,
+e o código vale uma vez em cada simulado: o Apps Script guarda a Situação do simulado de Biologia nas colunas G e H da
+aba **Códigos** e grava os resultados numa aba própria chamada **Biologia** (criada sozinha no primeiro envio).
+Para liberar um aluno só no simulado de Biologia, troque "Usado" por "Disponível" na coluna G. Para limitar o simulado
+a algumas séries, preencha `seriesPermitidas` (ex.: `["8º Ano", "9º Ano"]`).
+Depois de mudar o `Codigo.gs`, publique uma **nova versão** no Apps Script.
+
 ### Limitações conhecidas
 
 - O gabarito fica dentro do site (`questoes.json`) e a página `gabarito.html` não tem senha. Um aluno com conhecimento técnico conseguiria encontrá-lo.

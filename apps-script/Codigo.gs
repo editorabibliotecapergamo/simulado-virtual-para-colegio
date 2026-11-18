@@ -23,6 +23,14 @@
  *   Um código "Usado" não entra de novo.
  * Para LIBERAR um aluno (celular quebrou, enviou sem querer etc.): na aba "Códigos", troque a
  * Situação desse código de "Usado" para "Disponível". O resultado antigo continua na primeira aba.
+ *
+ * VÁRIOS SIMULADOS
+ * Cada simulado tem a sua aba de resultados e a sua própria Situação do código:
+ *   - Ciências (o principal): resultados na primeira aba; Situação / Usado em = colunas E e F de "Códigos".
+ *   - Biologia (?s=biologia no link): resultados na aba "Biologia" (criada sozinha);
+ *     Situação / Usado em = colunas G e H de "Códigos" (as colunas G e H vazias contam como "Disponível").
+ * O mesmo código vale uma vez em cada simulado. Para liberar o aluno no simulado de Biologia,
+ * troque a Situação na coluna G.
  */
 
 // Só é usado se o script NÃO tiver sido criado de dentro da planilha.
@@ -41,11 +49,24 @@ var ABA_CODIGOS = "Códigos";
 var CAB_CODIGOS = ["Código", "Série", "Turma", "Número", "Situação", "Usado em"];
 var DISPONIVEL = "Disponível", USADO = "Usado";
 
+// Simulados: "" é o principal (primeira aba). Os demais têm aba de resultados própria.
+// colSituacao = coluna (1 = A) da Situação do código nesse simulado; "Usado em" fica na coluna seguinte.
+var SIMULADOS = {
+  "": { aba: null, colSituacao: 5, nome: "Ciências" },
+  "biologia": { aba: "Biologia", colSituacao: 7, nome: "Biologia" }
+};
+function configSimulado(id) {
+  id = String(id == null ? "" : id).trim().toLowerCase();
+  if (!Object.prototype.hasOwnProperty.call(SIMULADOS, id)) throw new Error("Simulado desconhecido: " + id);
+  return SIMULADOS[id];
+}
+
 function doGet(e) {
   var p = (e && e.parameter) || {};
   if (p.acao === "verificar") {
     try {
-      var achado = buscarCodigo(p.codigo);
+      var sim = configSimulado(p.simulado);
+      var achado = buscarCodigo(p.codigo, sim);
       if (!achado) return resposta({ ok: true, valido: false, motivo: "invalido" });
       if (achado.situacao === USADO) return resposta({ ok: true, valido: false, motivo: "usado" });
       return resposta({ ok: true, valido: true, serie: achado.serie, turma: achado.turma, numero: achado.numero });
@@ -61,8 +82,10 @@ function doPost(e) {
   lock.waitLock(20000);
   try {
     var d = JSON.parse(e.postData.contents);
-    var aba = abrirAba();
+    var sim = configSimulado(d.simulado);
+    var aba = abrirAba(sim);
     prepararAba(aba);
+    prepararCodigos();
 
     // Se o aluno tocar em "Tentar enviar de novo", não duplica a linha.
     var id = texto(d.id);
@@ -72,7 +95,7 @@ function doPost(e) {
     }
 
     // Um envio por código: o código tem de existir e estar "Disponível".
-    var cod = buscarCodigo(d.codigo);
+    var cod = buscarCodigo(d.codigo, sim);
     if (!cod) return resposta({ ok: false, codigoInvalido: true, erro: "Código de acesso inválido." });
     if (cod.situacao === USADO) {
       return resposta({ ok: false, bloqueado: true, erro: "Este código já foi usado para enviar uma prova." });
@@ -85,7 +108,7 @@ function doPost(e) {
       Number(d.duracaoMin) || 0, texto(d.codigoProva), texto(d.respostas), texto(d.questoes), id,
       VALIDO, texto(cod.turma), cod.codigo
     ]);
-    cod.aba.getRange(cod.linha, 5, 1, 2).setValues([[USADO, new Date()]]);
+    cod.aba.getRange(cod.linha, sim.colSituacao, 1, 2).setValues([[USADO, new Date()]]);
     return resposta({ ok: true });
   } catch (err) {
     return resposta({ ok: false, erro: String(err) });
@@ -98,8 +121,24 @@ function planilha() {
   return SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(ID_PLANILHA);
 }
 
-function abrirAba() {
-  return planilha().getSheets()[0]; // primeira aba da planilha
+function abrirAba(sim) {
+  var p = planilha();
+  if (!sim || !sim.aba) return p.getSheets()[0]; // primeira aba da planilha
+  return p.getSheetByName(sim.aba) || p.insertSheet(sim.aba);
+}
+
+// Garante os cabeçalhos das colunas de cada simulado na aba "Códigos" (e a lista Disponível / Usado).
+function prepararCodigos() {
+  var aba = planilha().getSheetByName(ABA_CODIGOS);
+  if (!aba) return;
+  Object.keys(SIMULADOS).forEach(function (id) {
+    var sim = SIMULADOS[id];
+    if (sim.colSituacao <= 5) return;
+    aba.getRange(1, sim.colSituacao, 1, 2)
+      .setValues([["Situação (" + sim.nome + ")", "Usado em (" + sim.nome + ")"]]).setFontWeight("bold");
+    var regra = SpreadsheetApp.newDataValidation().requireValueInList([DISPONIVEL, USADO], true).setAllowInvalid(true).build();
+    aba.getRange(2, sim.colSituacao, Math.max(aba.getMaxRows() - 1, 1), 1).setDataValidation(regra);
+  });
 }
 
 // Cria/atualiza o cabeçalho dos resultados.
@@ -122,21 +161,23 @@ function prepararAba(aba) {
 }
 
 // Procura o código (sem diferenciar maiúsculas, espaços ou hífen) na aba "Códigos".
-function buscarCodigo(valor) {
+function buscarCodigo(valor, sim) {
+  sim = sim || SIMULADOS[""];
   var alvo = normalizarCodigo(valor);
   if (!/^[A-Z]{3}[0-9]{3}$/.test(alvo)) return null;
   var aba = planilha().getSheetByName(ABA_CODIGOS);
   if (!aba) throw new Error('A aba "' + ABA_CODIGOS + '" não existe na planilha.');
   var ultima = aba.getLastRow();
   if (ultima < 2) return null;
-  var linhas = aba.getRange(2, 1, ultima - 1, CAB_CODIGOS.length).getValues();
+  var largura = Math.max(CAB_CODIGOS.length, sim.colSituacao);
+  var linhas = aba.getRange(2, 1, ultima - 1, largura).getValues();
   for (var i = 0; i < linhas.length; i++) {
     var l = linhas[i];
     if (normalizarCodigo(l[0]) !== alvo) continue;
     return {
       aba: aba, linha: i + 2, codigo: alvo,
       serie: String(l[1]).trim(), turma: String(l[2]).trim(), numero: String(l[3]).trim(),
-      situacao: String(l[4]).trim().toLowerCase() === USADO.toLowerCase() ? USADO : DISPONIVEL
+      situacao: String(l[sim.colSituacao - 1]).trim().toLowerCase() === USADO.toLowerCase() ? USADO : DISPONIVEL
     };
   }
   return null;

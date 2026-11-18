@@ -32,3 +32,32 @@ window.CONFIG_SIMULADO = {
   // Deixe vazio ("") enquanto não estiver configurado. Veja o README.
   urlPlanilha: "https://script.google.com/macros/s/AKfycbxCiMI8j0IcDwuF2OYXm2Aa0R2Qr9wbMhLSSbxEvap8uq6c6oN_2tG9iC9AZ8_ejsb6DA/exec"
 };
+
+/**
+ * OUTROS SIMULADOS no mesmo site.
+ * O simulado acima (Ciências) abre em .../index.html. Cada simulado abaixo abre com ?s=NOME,
+ * por exemplo .../index.html?s=biologia  (e o gabarito em .../gabarito.html?s=biologia).
+ * Cada um tem seu banco de questões, seus resultados (uma aba própria na planilha) e o seu próprio
+ * controle de "código usado": o aluno pode fazer um simulado de cada, com o mesmo código.
+ */
+window.SIMULADOS = {
+  biologia: {
+    titulo: "Simulado Online de Biologia",
+    bancoQuestoes: "questoes_biologia.json",
+    serieBanco: "Biologia",      // as questões do banco pertencem a esta "série"
+    series: ["Biologia"],        // usado pela página do gabarito
+    seriesPermitidas: [],        // [] = qualquer série com código; ex.: ["8º Ano", "9º Ano"] limita o acesso
+    quantidadeFaceis: 25,
+    quantidadeMedias: 25,
+    codigoProva: "BIO-2026"
+  }
+};
+(function () {
+  var id = null;
+  try { id = new URLSearchParams(location.search).get("s"); } catch (e) { /* ignore */ }
+  var o = id && Object.prototype.hasOwnProperty.call(window.SIMULADOS, id) ? window.SIMULADOS[id] : null;
+  if (o) {
+    Object.keys(o).forEach(function (k) { window.CONFIG_SIMULADO[k] = o[k]; });
+    window.CONFIG_SIMULADO.simulado = id;
+  }
+})();
