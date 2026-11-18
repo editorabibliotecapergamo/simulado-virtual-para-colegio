@@ -8,7 +8,7 @@
 
   var CFG = window.CONFIG_SIMULADO || {};
   var LETRAS = ProvaSimulado.LETRAS;
-  var CHAVE = "simulado-online-v1";
+  var CHAVE = "simulado-online-v1" + (CFG.simulado ? "-" + CFG.simulado : "");
 
   var banco = [];
   var porUid = {};
@@ -48,7 +48,7 @@
 
   // ---------- montagem da prova ----------
   function montarProva(aluno) {
-    return ProvaSimulado.montarProva(banco, CFG, aluno.serie, aluno.nome + "|" + aluno.numero);
+    return ProvaSimulado.montarProva(banco, CFG, CFG.serieBanco || aluno.serie, aluno.nome + "|" + aluno.numero);
   }
   function letraCorreta(item) {
     return ProvaSimulado.letraCorreta(item, porUid[item.uid]);
@@ -116,7 +116,8 @@
     botao.disabled = true; botao.textContent = "Verificando…";
     var liberar = function () { botao.disabled = false; botao.textContent = textoBotao; };
     var url = CFG.urlPlanilha + (CFG.urlPlanilha.indexOf("?") >= 0 ? "&" : "?") +
-      "acao=verificar&codigo=" + encodeURIComponent(aluno.codigo);
+      "acao=verificar&codigo=" + encodeURIComponent(aluno.codigo) +
+      "&simulado=" + encodeURIComponent(CFG.simulado || "");
     var limite = new Promise(function (_, rejeita) { setTimeout(function () { rejeita(new Error("tempo esgotado")); }, 15000); });
     Promise.race([fetch(url).then(function (r) { return r.json(); }), limite])
       .then(function (resp) {
@@ -126,6 +127,11 @@
           $("erroInicio").textContent = resp.motivo === "usado"
             ? "Este código já foi usado para enviar uma prova. Se foi um engano, procure o seu professor."
             : "Código não encontrado. Confira as letras e os números e tente de novo.";
+          return;
+        }
+        var permitidas = CFG.seriesPermitidas || [];
+        if (permitidas.length && permitidas.indexOf(resp.serie) < 0) {
+          $("erroInicio").textContent = "Este simulado não é para a sua série (" + resp.serie + "). Confira o link com o seu professor.";
           return;
         }
         aluno.serie = resp.serie; aluno.turma = resp.turma; aluno.numero = resp.numero;
@@ -368,7 +374,7 @@
     var r = estado.resultado;
     var a = estado.aluno;
     var dados = {
-      nome: a.nome, codigo: a.codigo, numero: a.numero, serie: a.serie, data: a.data,
+      nome: a.nome, codigo: a.codigo, numero: a.numero, serie: a.serie, data: a.data, simulado: CFG.simulado || "",
       codigoProva: estado.codigoProva,
       acertos: r.acertos, total: r.total, nota: r.nota,
       inicio: estado.inicio, fim: estado.fim,
@@ -459,7 +465,7 @@
     prepararProva();
     prepararResultado();
 
-    fetch("questoes.json")
+    fetch(CFG.bancoQuestoes || "questoes.json")
       .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(function (dados) {
         banco = dados;

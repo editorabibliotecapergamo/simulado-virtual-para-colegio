@@ -68,7 +68,7 @@
 
       function desenhar() {
         var serie = $("serie").value;
-        var titulo = (CFG.titulo || "Simulado") + " — " + serie + " — Gabarito comentado";
+        var titulo = (CFG.titulo || "Simulado") + (CFG.simulado ? "" : " — " + serie) + " — Gabarito comentado";
         document.title = titulo;
         $("cabecalhoImpressao").innerHTML = "";
         $("cabecalhoImpressao").appendChild(el("h1", null, (CFG.escola || "") + " · " + titulo));
@@ -120,7 +120,7 @@
       $("serie").addEventListener("change", desenhar);
       $("btnPdf").addEventListener("click", function () { window.print(); });
 
-      fetch("questoes.json").then(function (r) { return r.json(); }).then(function (d) {
+      fetch(CFG.bancoQuestoes || "questoes.json").then(function (r) { return r.json(); }).then(function (d) {
         banco = d; d.forEach(function (q) { porUid[q.uid] = q; });
         desenhar();
       }).catch(function () { $("conteudo").textContent = "Não foi possível carregar as questões."; });
