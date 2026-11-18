@@ -17,7 +17,8 @@
  *
  * CÓDIGO DE ACESSO (UM ENVIO POR ALUNO)
  * A segunda aba da planilha, chamada "Códigos", guarda um código por aluno (3 letras + 3 números),
- * com a série, a turma e o número na chamada. Os nomes NÃO ficam nessa aba nem no site.
+ * com a série, a turma e o número na chamada. O site não tem nenhum nome nem código (só esta planilha);
+ * a coluna "Aluno" (nome) é só para você identificar quem é quem.
  * - O aluno digita o código; o site pergunta a este script se ele existe e está "Disponível".
  * - Ao receber a prova, o script grava o resultado e troca a Situação do código para "Usado".
  *   Um código "Usado" não entra de novo.
@@ -28,10 +29,12 @@
  * Cada simulado tem a sua aba de resultados e a sua própria Situação do código:
  *   - Ciências (o principal): resultados na primeira aba; Situação / Usado em = colunas E e F de "Códigos".
  *   - Biologia (?s=biologia no link): resultados na aba "Biologia" (criada sozinha);
- *     Situação / Usado em = colunas G e H de "Códigos". É um simulado RESTRITO: só entra o código que
- *     tiver "Disponível" escrito na coluna G; célula vazia = sem acesso (o aluno vê "não liberado").
+ *     Situação / Usado em = colunas "Situação (Biologia)" e "Usado em (Biologia)" de "Códigos". É um simulado
+ *     RESTRITO: só entra o código que tiver "Disponível" nessa coluna; célula vazia = sem acesso.
  * O mesmo código vale uma vez em cada simulado. Para dar acesso a mais um aluno na Biologia, escreva
- * "Disponível" na coluna G da linha dele; para liberar quem já usou, troque "Usado" por "Disponível".
+ * "Disponível" em "Situação (Biologia)" na linha dele; para liberar quem já usou, troque "Usado" por "Disponível".
+ * As colunas da aba "Códigos" são achadas pelo nome do cabeçalho: dá para ter a coluna "Aluno" (nome) na
+ * coluna A ou em qualquer outra, sem mexer no script. Não renomeie os cabeçalhos.
  */
 
 // Só é usado se o script NÃO tiver sido criado de dentro da planilha.
@@ -45,17 +48,18 @@ var CABECALHO = [
 var COL_ID = 13;
 var VALIDO = "Válido";
 
-// Aba com os códigos de acesso: Código | Série | Turma | Número | Situação | Usado em
+// Aba com os códigos de acesso. As colunas são achadas pelo NOME no cabeçalho (linha 1), então
+// pode haver outras colunas (ex.: "Aluno" na coluna A) e a ordem não importa:
+//   Código | Série | Turma | Número | Situação | Usado em | Situação (Biologia) | Usado em (Biologia)
 var ABA_CODIGOS = "Códigos";
-var CAB_CODIGOS = ["Código", "Série", "Turma", "Número", "Situação", "Usado em"];
 var DISPONIVEL = "Disponível", USADO = "Usado", SEM_ACESSO = "Sem acesso";
 
 // Simulados: "" é o principal (primeira aba). Os demais têm aba de resultados própria.
-// colSituacao = coluna (1 = A) da Situação do código nesse simulado; "Usado em" fica na coluna seguinte.
+// cabSituacao / cabUsado = nomes dos cabeçalhos, na aba "Códigos", da Situação e do "Usado em" nesse simulado.
 var SIMULADOS = {
-  "": { aba: null, colSituacao: 5, nome: "Ciências" },
-  // restrito: só entra quem tiver "Disponível" escrito na coluna G (célula vazia = sem acesso).
-  "biologia": { aba: "Biologia", colSituacao: 7, nome: "Biologia", restrito: true }
+  "": { aba: null, cabSituacao: "Situação", cabUsado: "Usado em", nome: "Ciências" },
+  // restrito: só entra quem tiver "Disponível" escrito na coluna Situação (Biologia) (célula vazia = sem acesso).
+  "biologia": { aba: "Biologia", cabSituacao: "Situação (Biologia)", cabUsado: "Usado em (Biologia)", nome: "Biologia", restrito: true }
 };
 function configSimulado(id) {
   id = String(id == null ? "" : id).trim().toLowerCase();
@@ -112,7 +116,8 @@ function doPost(e) {
       Number(d.duracaoMin) || 0, texto(d.codigoProva), texto(d.respostas), texto(d.questoes), id,
       VALIDO, texto(cod.turma), cod.codigo
     ]);
-    cod.aba.getRange(cod.linha, sim.colSituacao, 1, 2).setValues([[USADO, new Date()]]);
+    cod.aba.getRange(cod.linha, cod.colSituacao, 1, 1).setValue(USADO);
+    cod.aba.getRange(cod.linha, cod.colUsado, 1, 1).setValue(new Date());
     return resposta({ ok: true });
   } catch (err) {
     return resposta({ ok: false, erro: String(err) });
@@ -131,17 +136,34 @@ function abrirAba(sim) {
   return p.getSheetByName(sim.aba) || p.insertSheet(sim.aba);
 }
 
-// Garante os cabeçalhos das colunas de cada simulado na aba "Códigos" (e a lista Disponível / Usado).
+// Acha as colunas da aba "Códigos" pelo nome do cabeçalho. Devolve {nome do cabeçalho: coluna (1 = A)}.
+function colunasCodigos(aba) {
+  var mapa = {};
+  var n = aba.getLastColumn();
+  if (n < 1) return mapa;
+  aba.getRange(1, 1, 1, n).getValues()[0].forEach(function (h, i) {
+    var nome = String(h).trim();
+    if (nome && !mapa[nome]) mapa[nome] = i + 1;
+  });
+  return mapa;
+}
+
+// Garante as colunas de cada simulado na aba "Códigos" (cria no fim, se faltar) e a lista Disponível / Usado.
 function prepararCodigos() {
   var aba = planilha().getSheetByName(ABA_CODIGOS);
   if (!aba) return;
+  var mapa = colunasCodigos(aba);
   Object.keys(SIMULADOS).forEach(function (id) {
     var sim = SIMULADOS[id];
-    if (sim.colSituacao <= 5) return;
-    aba.getRange(1, sim.colSituacao, 1, 2)
-      .setValues([["Situação (" + sim.nome + ")", "Usado em (" + sim.nome + ")"]]).setFontWeight("bold");
+    if (sim.cabSituacao === "Situação") return; // as colunas do simulado principal já existem
+    [sim.cabSituacao, sim.cabUsado].forEach(function (nome) {
+      if (mapa[nome]) return;
+      var col = aba.getLastColumn() + 1;
+      aba.getRange(1, col, 1, 1).setValue(nome).setFontWeight("bold");
+      mapa[nome] = col;
+    });
     var regra = SpreadsheetApp.newDataValidation().requireValueInList([DISPONIVEL, USADO], true).setAllowInvalid(true).build();
-    aba.getRange(2, sim.colSituacao, Math.max(aba.getMaxRows() - 1, 1), 1).setDataValidation(regra);
+    aba.getRange(2, mapa[sim.cabSituacao], Math.max(aba.getMaxRows() - 1, 1), 1).setDataValidation(regra);
   });
 }
 
@@ -173,17 +195,25 @@ function buscarCodigo(valor, sim) {
   if (!aba) throw new Error('A aba "' + ABA_CODIGOS + '" não existe na planilha.');
   var ultima = aba.getLastRow();
   if (ultima < 2) return null;
-  var largura = Math.max(CAB_CODIGOS.length, sim.colSituacao);
+  var mapa = colunasCodigos(aba);
+  var obrigatorias = ["Código", "Série", "Turma", "Número"];
+  if (!sim.restrito) obrigatorias.push(sim.cabSituacao);
+  obrigatorias.forEach(function (nome) {
+    if (!mapa[nome]) throw new Error('Falta a coluna "' + nome + '" na aba "' + ABA_CODIGOS + '". Não renomeie os cabeçalhos.');
+  });
+  var largura = aba.getLastColumn();
   var linhas = aba.getRange(2, 1, ultima - 1, largura).getValues();
+  var val = function (l, nome) { return mapa[nome] ? l[mapa[nome] - 1] : ""; };
   for (var i = 0; i < linhas.length; i++) {
     var l = linhas[i];
-    if (normalizarCodigo(l[0]) !== alvo) continue;
-    var sit = String(l[sim.colSituacao - 1]).trim().toLowerCase();
+    if (normalizarCodigo(val(l, "Código")) !== alvo) continue;
+    var sit = String(val(l, sim.cabSituacao)).trim().toLowerCase();
     var situacao = sit === USADO.toLowerCase() ? USADO : DISPONIVEL;
     if (sim.restrito && sit !== USADO.toLowerCase() && sit !== DISPONIVEL.toLowerCase()) situacao = SEM_ACESSO;
     return {
       aba: aba, linha: i + 2, codigo: alvo,
-      serie: String(l[1]).trim(), turma: String(l[2]).trim(), numero: String(l[3]).trim(),
+      colSituacao: mapa[sim.cabSituacao], colUsado: mapa[sim.cabUsado],
+      serie: String(val(l, "Série")).trim(), turma: String(val(l, "Turma")).trim(), numero: String(val(l, "Número")).trim(),
       situacao: situacao
     };
   }
