@@ -64,11 +64,11 @@ sobre artrópodes, equinodermos, cordados, membrana celular e divisão celular. 
 
 Como funciona: as questões ficam em `questoes_biologia.json` (gerado por `python3 scripts/gerar_biologia.py`, a partir de
 `scripts/dados/biologia_50.py`) e a configuração em `window.SIMULADOS` no `config.js`. O aluno usa o **mesmo código de acesso**,
-e o código vale uma vez em cada simulado: o Apps Script guarda a Situação do simulado de Biologia nas colunas G e H da
+e o código vale uma vez em cada simulado: o Apps Script guarda a Situação do simulado de Biologia nas colunas "Situação (Biologia)" e "Usado em (Biologia)" da
 aba **Códigos** e grava os resultados numa aba própria chamada **Biologia** (criada sozinha no primeiro envio).
-O simulado de Biologia é **restrito**: só entra o código que tiver "Disponível" escrito na coluna G da aba **Códigos**
+O simulado de Biologia é **restrito**: só entra o código que tiver "Disponível" escrito na coluna **Situação (Biologia)** da aba **Códigos**
 (célula vazia = "este simulado não está liberado para o seu código"). Para dar acesso a mais alguém, escreva "Disponível"
-na coluna G da linha dele; para liberar quem já usou, troque "Usado" por "Disponível". A lista de quem tem acesso fica só na
+na coluna **Situação (Biologia)** da linha dele; para liberar quem já usou, troque "Usado" por "Disponível". A lista de quem tem acesso fica só na
 planilha, nunca no site público.
 Depois de mudar o `Codigo.gs`, publique uma **nova versão** no Apps Script.
 
@@ -86,3 +86,7 @@ Depois de mudar o `Codigo.gs`, publique uma **nova versão** no Apps Script.
 python3 -m http.server 8000
 # abra http://localhost:8000
 ```
+
+A aba **Códigos** pode ter uma coluna **Aluno** (nome), na coluna A ou em qualquer outra: o script acha as colunas pelo nome do
+cabeçalho (Código, Série, Turma, Número, Situação, Usado em, Situação (Biologia), Usado em (Biologia)), então a ordem não
+importa. Não renomeie esses cabeçalhos. Os nomes ficam só na planilha, nunca neste repositório público.
