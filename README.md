@@ -1,6 +1,32 @@
 # simulado-virtual-para-colegio
 Simulado para facilitar os estudos e avaliação dos alunos
 
+## Onde paramos (pausa em 23/11/2026)
+
+> **Para quem retomar o trabalho:** quando o Augusto der o comando de retorno, comece relembrando a ele, exatamente, o que está
+> abaixo (o que está pronto e o que falta), e só depois siga em frente. Esta seção é pública: não coloque aqui nomes de
+> alunos, códigos de acesso nem texto do material do Objetivo.
+
+**Pronto e no ar (`main`):**
+- **Simulado de Ciências** (6º ao 9º ano): 40 questões por série (20 fáceis + 20 médias), prova igual para todos da série, sem gabarito
+  para o aluno, resultados na planilha do Augusto. Cada aluno entra com um **código individual** (aba **Códigos**), que vale uma vez.
+- **Simulado de Biologia** (PRs #6, #7 e #8 mesclados): 50 questões (25 fáceis + 25 médias) sobre artrópodes (14), divisão celular (11),
+  membrana celular (10), equinodermos (8) e cordados (7). Links: `?s=biologia` na prova e `gabarito.html?s=biologia`.
+  É **restrito**: só entra o código com "Disponível" na coluna **Situação (Biologia)** da aba Códigos, e hoje só **um código avulso** está liberado.
+- Em 17/11 dois códigos de alunas do 6º A estavam "Usado" sem prova enviada (efeito de apagar a linha de teste dos resultados) e foram
+  liberados. Regra: **apagar o resultado não libera o aluno; é preciso trocar a Situação para "Disponível" na aba Códigos.**
+
+**Falta (últimas informações, de 18/11; não confirmado se já foi feito):**
+1. O Augusto **colar o `apps-script/Codigo.gs` mais novo** no Apps Script e publicar em Implantar > Gerenciar implantações > lápis > **Nova versão**.
+   Sem isso a versão antiga continua ativa (deixa qualquer código entrar na Biologia e lê as colunas por posição).
+2. Depois, avisar a thread do simulado: ela insere a coluna **Aluno** (nomes) na coluna A da aba Códigos, com a lista privada de nomes.
+   Em 23/11 a coluna **ainda não existia** na planilha (o cabeçalho começa em "Código"). **Não inserir a coluna antes do passo 1**: o script
+   antigo passaria a ler o nome no lugar do código e todos os alunos veriam "código não encontrado".
+3. Testar no ar com o código avulso da Biologia (o ambiente do Claude não alcança o Google nem o GitHub Pages, então só o Augusto consegue testar o site).
+
+**Ideias ainda não pedidas:** liberar a Biologia para mais alunos (escrever "Disponível" na coluna G da linha deles) ou limitar por série
+(`seriesPermitidas` no `config.js`); novos temas de Biologia entram refazendo o banco e o gabarito (a prova muda).
+
 ## Simulado online (para o aluno fazer em casa)
 
 O site do aluno é o `index.html`. Ele funciona no computador, tablet e celular.
